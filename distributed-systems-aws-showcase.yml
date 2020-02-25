@@ -1,0 +1,299 @@
+AWSTemplateFormatVersion: 2010-09-09
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  CodeBucket:
+    Type: String
+    Default: lukas-code
+  CodeKey:
+    Type: String
+    Default: code.zip
+  JavaKey:
+    Type: String
+    Default: database-handler-1.0-SNAPSHOT.jar
+  DomainName:
+    Type: String
+    Default: es-domain-test
+Resources:
+  QueuePublisherTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties: {}
+  SNSS3F0GB:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref "QueuePublisherTopic"
+      Endpoint: !GetAtt "SearchQueue.Arn"
+      Protocol: "sqs"
+      RawMessageDelivery: true
+  SearchQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties: {}
+  RefreshQueue:
+    Type: 'AWS::SQS::Queue'
+    Properties: {}
+  RefreshQueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    Properties:
+      Queues:
+        - !Ref "RefreshQueue"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Resource: !GetAtt "RefreshQueue.Arn"
+            Action: 'SQS:SendMessage'
+            Condition:
+              ArnEquals:
+                'aws:SourceArn': !Ref "QueuePublisherTopic"
+  SearchQueuePolicy:
+    Type: 'AWS::SQS::QueuePolicy'
+    Properties:
+      Queues:
+        - !Ref "SearchQueue"
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal: '*'
+            Resource: !GetAtt "SearchQueue.Arn"
+            Action: 'SQS:SendMessage'
+            Condition:
+              ArnEquals:
+                'aws:SourceArn': "QueuePublisherTopic"
+  RefreshQueueSubscription:
+    Type: 'AWS::SNS::Subscription'
+    Properties:
+      TopicArn: !Ref "QueuePublisherTopic"
+      Endpoint: !GetAtt "RefreshQueue.Arn"
+      Protocol: sqs
+      RawMessageDelivery: true
+  S3UpdaterRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: "LogPolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Effect: Allow
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: "S3Policy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: VisualEditor0
+                Effect: Allow
+                Action:
+                  - 's3:PutObject'
+                  - 's3:ListBucket'
+                  - 's3:GetObject'
+                  - 's3:AbortMultipartUpload'
+                  - 's3:DeleteObject'
+                Resource: '*'
+        - PolicyName: allowSqs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ChangeMessageVisibility
+                Resource: !GetAtt RefreshQueue.Arn
+  DynamoProcessorRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: "LogPolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Effect: Allow
+                Resource: 'arn:aws:logs:*:*:*'
+              - Effect: Allow
+                Action:
+                  - dynamodb:DescribeStream
+                  - dynamodb:GetRecords
+                  - dynamodb:GetShardIterator
+                  - dynamodb:ListStreams
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - sns:Publish
+                Resource: !Ref QueuePublisherTopic
+  ESDomain:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: !Ref "DomainName"
+      ElasticsearchClusterConfig:
+        InstanceCount: 1
+        InstanceType: "t2.small.elasticsearch"
+      EBSOptions:
+        EBSEnabled: true
+        VolumeSize: 10
+        VolumeType: gp2
+      AccessPolicies:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              AWS: !Sub "${AWS::AccountId}"
+            Action: "es:*"
+            Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/*/*"
+  ESUpdaterRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Policies:
+        - PolicyName: "LogPolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Effect: Allow
+                Resource: 'arn:aws:logs:*:*:*'
+        - PolicyName: allowSqs
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueAttributes
+                  - sqs:ChangeMessageVisibility
+                Resource: !GetAtt SearchQueue.Arn
+        - PolicyName: "ESPolicy"
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: 'eswrite'
+                Effect: Allow
+                Action:
+                  - 'es:DescribeElasticsearchDomain'
+                  - 'es:DescribeElasticsearchDomains'
+                  - 'es:DescribeElasticsearchDomainConfig'
+                  - 'es:ESHttpPost'
+                  - 'es:ESHttpPut'
+                Resource:
+                  - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/${ESDomain}'
+                  - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/${ESDomain}/*'
+              - Sid: 'esget'
+                Effect: Allow
+                Action:
+                  - 'es:ESHttpGet'
+                Resource:
+                  - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/${ESDomain}/*'
+
+  SearchUpdaterFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      CodeUri: "search-updater/"
+      Role: !GetAtt "ESUpdaterRole.Arn"
+      Runtime: "nodejs10.x"
+      Handler: "index.handler"
+      Environment:
+        Variables:
+          ELASTICSEARCH_DOMAIN: !GetAtt "ESDomain.DomainEndpoint"
+  SearchQueueSubscription:
+    Type: 'AWS::Lambda::EventSourceMapping'
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt "SearchQueue.Arn"
+      FunctionName: !Ref "SearchUpdaterFunction"
+  BackupBucket:
+    Type: 'AWS::S3::Bucket'
+  RefreshBackupFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      CodeUri: "backup-updater/"
+      Role: !GetAtt "S3UpdaterRole.Arn"
+      Runtime: "python3.7"
+      Handler: "handler.lambda_handler"
+      Environment:
+        Variables:
+          BUCKET: !Ref BackupBucket
+  RefreshQueueLambdaSubscription:
+    Type: 'AWS::Lambda::EventSourceMapping'
+    Properties:
+      BatchSize: 10
+      Enabled: true
+      EventSourceArn: !GetAtt "RefreshQueue.Arn"
+      FunctionName: !GetAtt "RefreshBackupFunction.Arn"
+  DynamoTriggerFunction:
+    Type: 'AWS::Serverless::Function'
+    Properties:
+      MemorySize: 256
+      Timeout: 60
+      Role: !GetAtt "DynamoProcessorRole.Arn"
+      CodeUri: "db-update-handler/target/database-handler-1.0-SNAPSHOT.jar"
+      Runtime: "java8"
+      Handler: 'database.DynamoDBHandler::handleRequest'
+      Environment:
+        Variables:
+          TOPIC_ARN: !Ref "QueuePublisherTopic"
+          TEST: !Ref BackupBucket
+  DynamoTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+  DynamoLambdaSubscription:
+    Type: 'AWS::Lambda::EventSourceMapping'
+    Properties:
+      BatchSize: 1
+      Enabled: true
+      EventSourceArn:
+        'Fn::GetAtt':
+          - "DynamoTable"
+          - StreamArn
+      FunctionName: !GetAtt "DynamoTriggerFunction.Arn"
+      StartingPosition: LATEST

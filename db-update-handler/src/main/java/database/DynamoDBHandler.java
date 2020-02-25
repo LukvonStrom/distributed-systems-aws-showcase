@@ -1,8 +1,6 @@
 package database;
 
 
-import com.amazonaws.AmazonClientException;
-import com.amazonaws.AmazonServiceException;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.DynamodbEvent;
@@ -10,24 +8,36 @@ import com.amazonaws.services.sns.AmazonSNS;
 import com.amazonaws.services.sns.AmazonSNSClientBuilder;
 import com.amazonaws.services.sns.model.PublishRequest;
 import com.amazonaws.services.sns.model.PublishResult;
-import com.google.gson.Gson;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 public class DynamoDBHandler implements
         RequestHandler<DynamodbEvent, String> {
 
     final AmazonSNS snsClient = AmazonSNSClientBuilder.defaultClient();
-    Gson gson = new Gson();
-    final String topicArn = /*System.getenv("TOPIC_ARN") */"arn:aws:sns:eu-central-1:386772503388:sns_test";
+    final String topicArn = System.getenv("TOPIC_ARN");
+    ObjectMapper mapper = new ObjectMapper();
 
+    String snsPayload = null;
 
     public String handleRequest(DynamodbEvent dynamodbEvent, Context context) {
-            for (DynamodbEvent.DynamodbStreamRecord record : dynamodbEvent.getRecords()) {
+        snsPayload = null;
 
-                String snsPayload = gson.toJson(record.getDynamodb());
+        System.out.println("TOPIC ARN: " + topicArn);
 
-                final PublishResult publishResponse = snsClient.publish(new PublishRequest(topicArn, snsPayload));
+        for (DynamodbEvent.DynamodbStreamRecord record : dynamodbEvent.getRecords()) {
+            try {
+                mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL);
+                snsPayload = mapper.writeValueAsString(record.getDynamodb());
+                System.out.println(snsPayload);
+            } catch (JsonProcessingException e) {
+                e.printStackTrace();
             }
 
+            final PublishResult publishResponse = snsClient.publish(new PublishRequest(topicArn, snsPayload));
+            System.out.println(publishResponse.toString());
+        }
 
         return "Sent " + dynamodbEvent.getRecords().size() + " to Amazon SNS.";
     }
