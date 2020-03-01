@@ -39,7 +39,7 @@ public class DynamoDBHandler implements
             System.out.println(publishResponse.toString());
         }
 
-        return "Sent " + dynamodbEvent.getRecords().size() + " to Amazon SNS.";
+        return "Sent " + dynamodbEvent.getRecords().size() + "records to Amazon SNS.";
     }
 }
 
