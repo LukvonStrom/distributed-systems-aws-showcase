@@ -9,9 +9,6 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@elastic/elasticsearch": "^7.6.0",
-    "aws-sdk": "^2.625.0",
-    "elasticsearch": "^16.6.0",
-    "http-aws-es": "^6.0.0"
+    "@elastic/elasticsearch": "^7.6.0"
   }
 }
