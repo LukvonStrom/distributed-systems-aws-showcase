@@ -17,7 +17,7 @@ Resources:
   QueuePublisherTopic:
     Type: 'AWS::SNS::Topic'
     Properties: {}
-  SNSS3F0GB:
+  AnalyticsQueueSubscription:
     Type: 'AWS::SNS::Subscription'
     Properties:
       TopicArn: !Ref "QueuePublisherTopic"
@@ -59,7 +59,7 @@ Resources:
             Action: 'SQS:SendMessage'
             Condition:
               ArnEquals:
-                'aws:SourceArn': "QueuePublisherTopic"
+                'aws:SourceArn': !Ref "QueuePublisherTopic"
   RefreshQueueSubscription:
     Type: 'AWS::SNS::Subscription'
     Properties:
@@ -256,6 +256,7 @@ Resources:
       Enabled: true
       EventSourceArn: !GetAtt "SearchQueue.Arn"
       FunctionName: !Ref "SearchUpdaterFunction"
+      
   BackupBucket:
     Type: 'AWS::S3::Bucket'
   RefreshBackupFunction:
