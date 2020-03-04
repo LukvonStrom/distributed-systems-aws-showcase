@@ -13,10 +13,16 @@ Parameters:
   DomainName:
     Type: String
     Default: es-domain-test
+  DebugEmail:
+    Type: String
+    Default: wi18039@lehre.dhbw-stuttgart.de
 Resources:
   QueuePublisherTopic:
     Type: 'AWS::SNS::Topic'
-    Properties: {}
+    Properties: 
+      Subscription:
+        - Endpoint: !Ref "DebugEmail"
+          Protocol: email
   AnalyticsQueueSubscription:
     Type: 'AWS::SNS::Subscription'
     Properties:

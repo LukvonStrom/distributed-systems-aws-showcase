@@ -9,7 +9,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@acuris/aws-es-connection": "^1.0.1",
-    "@elastic/elasticsearch": "^7.6.0"
+    "@elastic/elasticsearch": "^7.6.0",
+    "aws-elasticsearch-connector": "^8.2.0"
+  },
+  "devDependencies": {
+    "aws-sdk": "^2.633.0"
   }
 }
