@@ -164,9 +164,17 @@ Resources:
         Statement:
           - Effect: "Allow"
             Principal:
-              AWS: !Sub "${AWS::AccountId}"
-            Action: "es:*"
-            Resource: !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/*/*"
+              AWS: !GetAtt "ESUpdaterRole.Arn"
+            Action:
+                  - "es:ESHttpHead"
+                  - "es:ESHttpPost"
+                  - "es:ESHttpGet"
+                  - "es:ESHttpPatch"
+                  - "es:ESHttpDelete"
+                  - "es:ESHttpPut"
+            Resource: 
+              - !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/*"
+              - !Sub "arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}"
   ESUpdaterRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -205,23 +213,17 @@ Resources:
           PolicyDocument:
             Version: 2012-10-17
             Statement:
-              - Sid: 'eswrite'
+              - Sid: 'eshttp'
                 Effect: Allow
                 Action:
-                  - 'es:DescribeElasticsearchDomain'
-                  - 'es:DescribeElasticsearchDomains'
-                  - 'es:DescribeElasticsearchDomainConfig'
-                  - 'es:ESHttpPost'
-                  - 'es:ESHttpPut'
+                  - "es:ESHttpHead"
+                  - "es:ESHttpPost"
+                  - "es:ESHttpGet"
+                  - "es:ESHttpPatch"
+                  - "es:ESHttpDelete"
+                  - "es:ESHttpPut"
                 Resource:
-                  - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/${ESDomain}'
-                  - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/${ESDomain}/*'
-              - Sid: 'esget'
-                Effect: Allow
-                Action:
-                  - 'es:ESHttpGet'
-                Resource:
-                  - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:${DomainName}/${ESDomain}/*'
+                  - !Sub 'arn:aws:es:${AWS::Region}:${AWS::AccountId}:domain/${DomainName}'
 
   SearchUpdaterFunction:
     Type: 'AWS::Serverless::Function'
@@ -229,7 +231,7 @@ Resources:
       CodeUri: "search-updater/index.js"
       Role: !GetAtt "ESUpdaterRole.Arn"
       Runtime: "nodejs10.x"
-      Handler: "index.handler"
+      Handler: "index.handle"
       Layers:
         - !Ref "SearchUpdaterDependencyLayer"
       Environment:
