@@ -1,0 +1,35 @@
+{
+    "approximateCreationDateTime":1583336206000,
+    "keys":{
+        "id":{
+            "s":"1",
+            "n":null,
+            "b":null,
+            "m":null,
+            "l":null,
+            "null":null,
+            "bool":null,
+            "ss":null,
+            "ns":null,
+            "bs":null
+        }
+    },
+    "newImage":{
+        "id":{
+            "s":"1",
+            "n":null,
+            "b":null,
+            "m":null,
+            "l":null,
+            "null":null,
+            "bool":null,
+            "ss":null,
+            "ns":null,
+            "bs":null
+        }
+    },
+    "oldImage":null,
+    "sequenceNumber":"100000000013834804868",
+    "sizeBytes":6,
+    "streamViewType":"NEW_AND_OLD_IMAGES"
+}
