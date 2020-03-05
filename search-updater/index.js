@@ -43,14 +43,14 @@ async function exists(id) {
 function handleError(...results){
     let resultBuffer = [];
     for(let result of results){
-        if(result.statusCode != 201 || result.statusCode != 200 || result.warnings){
+        let acceptedStatusCodes = [200, 201]
+        if(!acceptedStatusCodes.includes(result.statusCode) || result.warnings !== null){
                     console.error(result);
                     process.exit(1);
         }else if(result.hasOwnProperty('body')) {
             resultBuffer.push(result.body);
         }
     }
-    
 }
 
 async function handle(event, context) {
