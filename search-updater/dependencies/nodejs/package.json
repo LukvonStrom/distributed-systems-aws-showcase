@@ -13,6 +13,6 @@
     "aws-elasticsearch-connector": "^8.2.0"
   },
   "devDependencies": {
-    "aws-sdk": "^2.633.0"
+    "aws-sdk": "2.633.0"
   }
 }
