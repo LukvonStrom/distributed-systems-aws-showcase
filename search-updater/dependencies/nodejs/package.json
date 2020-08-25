@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "@elastic/elasticsearch": "^7.6.0",
-    "aws-elasticsearch-connector": "^8.2.0"
+    "aws-elasticsearch-connector": "^9.0.0"
   },
   "devDependencies": {
     "aws-sdk": "2.656.0"
