@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@elastic/elasticsearch": "^7.6.0",
+    "@elastic/elasticsearch": "^8.0.0",
     "aws-elasticsearch-connector": "^8.2.0"
   },
   "devDependencies": {
